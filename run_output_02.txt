@@ -1,0 +1,25 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+Config :: Model: Qwen/Qwen2.5-0.5B-Instruct | Device: mps | Base Dir: /Users/prasadmahadik/causal_probing_project
+>>> 1. Preparing Data for Causal Tracing...
+Train Size: 213
+Test ID Size: 54
+Test OOD Size: 550
+>>> 2. Loading Model...
+Loading model: Qwen/Qwen2.5-0.5B-Instruct on mps
+Loaded pretrained model Qwen/Qwen2.5-0.5B-Instruct into HookedTransformer
+>>> 3. Running Causal Tracing (Head Ablation)...
+Computing mean activations for ablation...
+Baseline Pass:   0%|          | 0/25 [00:00<?, ?it/s]Baseline Pass:   0%|          | 0/25 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "/Users/prasadmahadik/causal_probing_project/scripts/02_find_causal_components.py", line 48, in <module>
+    main()
+  File "/Users/prasadmahadik/causal_probing_project/scripts/02_find_causal_components.py", line 29, in main
+    scores = run_causal_tracing(model, subset, batch_size=4) 
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/prasadmahadik/causal_probing_project/src/causal_tracing.py", line 83, in run_causal_tracing
+    correct_tokens = [model.to_single_token(" " + c) for c in batch_correct] # Prepend space usually needed
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/prasadmahadik/miniforge3/lib/python3.12/site-packages/transformer_lens/HookedTransformer.py", line 952, in to_single_token
+    assert not token.shape, f"Input string: {string} is not a single token!"
+           ^^^^^^^^^^^^^^^
+AssertionError: Input string:  Very few (if any) pop records are illegal in the UK is not a single token!

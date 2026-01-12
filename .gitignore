@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+
+# Project Artifacts
+activations/
+models/probes/
+results/
+plots/
+
+# Data (if downloaded)
+data/

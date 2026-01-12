@@ -1,0 +1,44 @@
+Config :: Model: Qwen/Qwen2.5-0.5B-Instruct | Device: mps | Base Dir: /Users/prasadmahadik/causal_probing_project
+>>> 1. Loading Artifacts...
+>>> 2. Pre-computing Probe Predictions (Batch inference)...
+Finding Best Single Probe on ID Test...
+Best Baseline Probe: L20.H13 (Acc: 0.6759)
+
+Results Summary:
+Method              Dataset  K   Aggregation
+Accuracy Ensemble   ID       3   mean           0.657407
+                             5   mean           0.657407
+                             10  mean           0.666667
+                             20  mean           0.657407
+                    OOD_QA   3   mean           0.510909
+                             5   mean           0.513636
+                             10  mean           0.514545
+                             20  mean           0.518182
+Baseline (Best ID)  ID       1   Single         0.675926
+                    OOD_QA   1   Single         0.495455
+Causal Ensemble     ID       3   mean           0.611111
+                                 vote           0.601852
+                                 weighted       0.601852
+                             5   mean           0.611111
+                                 vote           0.601852
+                                 weighted       0.611111
+                             10  mean           0.611111
+                                 vote           0.611111
+                                 weighted       0.601852
+                             20  mean           0.601852
+                                 vote           0.611111
+                                 weighted       0.601852
+                    OOD_QA   3   mean           0.506364
+                                 vote           0.516364
+                                 weighted       0.508182
+                             5   mean           0.518182
+                                 vote           0.509091
+                                 weighted       0.518182
+                             10  mean           0.513636
+                                 vote           0.513636
+                                 weighted       0.513636
+                             20  mean           0.510000
+                                 vote           0.510000
+                                 weighted       0.510909
+Name: Accuracy, dtype: float64
+Saved results to /Users/prasadmahadik/causal_probing_project/results/final_results.csv
