@@ -1,7 +1,5 @@
 # Google Colab Run Instructions
 
-Copy and paste these blocks into code cells in your Google Colab notebook.
-
 ## 1. Mount Google Drive
 This allows you to save results, models, and activations persistently.
 ```python
@@ -25,7 +23,7 @@ Clone the code into the Colab runtime (fast execution).
 ```
 
 ## 4. Run Experiment Pipeline
-IMPORTANT: Replace `hf_YOUR_TOKEN` with your actual HuggingFace token.
+Replace `hf_YOUR_TOKEN` with HuggingFace token.
 We use `--base_dir` to point to Google Drive. This ensures all huge files (activations) and results are saved to Drive, not the temporary Colab VM.
 
 ### Step 1: Prepare Data & Train Initial Probes
