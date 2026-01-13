@@ -3,12 +3,14 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 import seaborn as sns
+import argparse
+import sys
 from pathlib import Path
 
-# Config
-BASE_DIR = Path(__file__).parent.parent.resolve()
-RESULTS_DIR = BASE_DIR / "results"
-PLOTS_DIR = BASE_DIR / "plots"
+# Add project root to path
+sys.path.append(str(Path(__file__).parent.parent))
+
+from src.config import RESULTS_DIR, PLOTS_DIR
 
 def main():
     print("Loading Results...")
@@ -96,4 +98,13 @@ def main():
         print("Saved scatter_causal_vs_ood.png")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Visualize probe analysis results')
+    parser.add_argument('--base_dir', type=str, default=None, help='Base directory for data')
+
+    args = parser.parse_args()
+
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
