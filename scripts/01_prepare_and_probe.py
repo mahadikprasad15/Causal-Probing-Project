@@ -14,7 +14,7 @@ from src.data_loader import get_truthful_qa_data, create_truthfulqa_splits, form
 from src.probe_training import extract_activations_for_probing, train_probes, save_probes
 from src.evaluation import get_probe_predictions
 
-def main(pooling='last'):
+def main(pooling='last', model_name=None, token=None):
     print(f">>> Running with pooling method: {pooling}")
     print(">>> 1. Loading Data...")
     df = get_truthful_qa_data()
@@ -36,7 +36,7 @@ def main(pooling='last'):
 
     # Load Model
     print(">>> 2. Loading Model...")
-    model = load_model()
+    model = load_model(model_name=model_name, token=token)
 
     # Extract Activations
     # We save these to disk to save time in next steps
@@ -90,13 +90,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract activations and train probes')
     parser.add_argument('--pooling', type=str, default='last', choices=['last', 'mean'],
                         help='Pooling method for activation extraction (default: last)')
+    parser.add_argument('--model', type=str, default=None,
+                        help='Model name/path (default: from config)')
     parser.add_argument('--token', type=str, default=None, help='HuggingFace token')
     parser.add_argument('--base_dir', type=str, default=None, help='Base directory for data')
 
     args = parser.parse_args()
 
     try:
-        main(pooling=args.pooling)
+        main(pooling=args.pooling, model_name=args.model, token=args.token)
     except Exception as e:
         import traceback
         traceback.print_exc()
