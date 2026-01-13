@@ -231,30 +231,31 @@ def analyze_layer_contributions():
     n_layers, n_heads = causal_scores.shape
 
     # Get top-20 heads for each method
-    top_acc = sorted(val_accs.items(), key=lambda x: x[1], reverse=True)[:20]
+    top_acc_items = sorted(val_accs.items(), key=lambda x: x[1], reverse=True)[:20]
+    top_acc_heads = [k for k, v in top_acc_items]
 
     flat_scores = causal_scores.flatten()
     sorted_indices = torch.argsort(flat_scores, descending=True)
-    top_causal = []
+    top_causal_heads = []
     for idx in sorted_indices[:20]:
         l = (idx // n_heads).item()
         h = (idx % n_heads).item()
-        top_causal.append((l, h))
+        top_causal_heads.append((l, h))
 
     # Count heads per layer
     acc_layer_counts = {}
     causal_layer_counts = {}
 
-    for layer, head in top_acc:
+    for layer, head in top_acc_heads:
         acc_layer_counts[layer] = acc_layer_counts.get(layer, 0) + 1
 
-    for layer, head in top_causal:
+    for layer, head in top_causal_heads:
         causal_layer_counts[layer] = causal_layer_counts.get(layer, 0) + 1
 
     # Get OOD accuracy per head
     ood_mat = acc_matrices['OOD_QA']
-    acc_ood_scores = [ood_mat[l, h] for l, h in top_acc]
-    causal_ood_scores = [ood_mat[l, h] for l, h in top_causal]
+    acc_ood_scores = [ood_mat[l, h] for l, h in top_acc_heads]
+    causal_ood_scores = [ood_mat[l, h] for l, h in top_causal_heads]
 
     # Plot
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
@@ -289,12 +290,12 @@ def analyze_layer_contributions():
     acc_layer_ood = {}
     causal_layer_ood = {}
 
-    for layer, head in top_acc:
+    for layer, head in top_acc_heads:
         if layer not in acc_layer_ood:
             acc_layer_ood[layer] = []
         acc_layer_ood[layer].append(ood_mat[layer, head])
 
-    for layer, head in top_causal:
+    for layer, head in top_causal_heads:
         if layer not in causal_layer_ood:
             causal_layer_ood[layer] = []
         causal_layer_ood[layer].append(ood_mat[layer, head])
@@ -313,11 +314,11 @@ def analyze_layer_contributions():
     axes[1, 0].grid(True, alpha=0.3)
 
     # Bottom-right: Causal score vs validation accuracy for top-20
-    acc_causal_scores = [causal_scores[l, h].item() for l, h in top_acc]
-    acc_val_accs = [val_accs[k] for k in top_acc]
+    acc_causal_scores = [causal_scores[l, h].item() for l, h in top_acc_heads]
+    acc_val_accs = [val_accs[k] for k in top_acc_heads]
 
-    causal_causal_scores = [causal_scores[l, h].item() for l, h in top_causal]
-    causal_val_accs = [val_accs[(l, h)] for l, h in top_causal]
+    causal_causal_scores = [causal_scores[l, h].item() for l, h in top_causal_heads]
+    causal_val_accs = [val_accs[(l, h)] for l, h in top_causal_heads]
 
     axes[1, 1].scatter(acc_causal_scores, acc_val_accs,
                       label='Accuracy Top-20', color='blue', s=100, alpha=0.7)
