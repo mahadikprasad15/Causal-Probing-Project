@@ -10,7 +10,7 @@ from src.model_utils import load_model
 from src.data_loader import get_truthful_qa_data, create_truthfulqa_splits, format_truthfulqa_for_probing
 from src.causal_tracing import run_causal_tracing
 
-def main(model_name=None, token=None):
+def main(model_name=None, token=None, force=False):
     print(">>> 1. Preparing Data for Causal Tracing...")
     # Ideally we find causal components on the TRAIN distribution?
     # Or on a held-out ID set?
@@ -22,28 +22,50 @@ def main(model_name=None, token=None):
     # Use a subset of 100 examples for tracing to keep it fast
     subset = train_data[:100]
 
-    print(">>> 2. Loading Model...")
-    model = load_model(model_name=model_name, token=token)
-    
-    print(">>> 3. Running Causal Tracing (Head Ablation)...")
-    # This might take a while
-    scores = run_causal_tracing(model, subset, batch_size=4) 
-    # scores shape: [n_layers, n_heads]
-    
-    print(">>> 4. Saving Causal Scores...")
-    torch.save(scores, RESULTS_DIR / "causal_scores_ablation.pt")
-    
-    # Print top heads
-    flat_scores = scores.flatten()
-    top_k_indices = torch.topk(flat_scores, k=10).indices
-    n_heads = model.cfg.n_heads
-    
-    print("\nTop 10 Causal Heads (Layer.Head):")
-    for idx in top_k_indices:
-        layer = idx // n_heads
-        head = idx % n_heads
-        score = scores[layer, head]
-        print(f"L{layer}.H{head}: {score:.4f}")
+    # Check if causal scores already exist
+    causal_scores_file = RESULTS_DIR / "causal_scores_ablation.pt"
+
+    if causal_scores_file.exists() and not force:
+        print(f">>> Causal scores already exist, loading from {causal_scores_file}...")
+        print("    Use --force to re-run causal tracing")
+        scores = torch.load(causal_scores_file)
+        n_heads = scores.shape[1]
+
+        # Print top heads
+        flat_scores = scores.flatten()
+        top_k_indices = torch.topk(flat_scores, k=10).indices
+
+        print("\nTop 10 Causal Heads (Layer.Head):")
+        for idx in top_k_indices:
+            layer = idx // n_heads
+            head = idx % n_heads
+            score = scores[layer, head]
+            print(f"L{layer}.H{head}: {score:.4f}")
+    else:
+        if force and causal_scores_file.exists():
+            print(f">>> Force flag set, re-running causal tracing...")
+        print(">>> 2. Loading Model...")
+        model = load_model(model_name=model_name, token=token)
+
+        print(">>> 3. Running Causal Tracing (Head Ablation)...")
+        # This might take a while
+        scores = run_causal_tracing(model, subset, batch_size=4)
+        # scores shape: [n_layers, n_heads]
+
+        print(">>> 4. Saving Causal Scores...")
+        torch.save(scores, RESULTS_DIR / "causal_scores_ablation.pt")
+
+        # Print top heads
+        flat_scores = scores.flatten()
+        top_k_indices = torch.topk(flat_scores, k=10).indices
+        n_heads = model.cfg.n_heads
+
+        print("\nTop 10 Causal Heads (Layer.Head):")
+        for idx in top_k_indices:
+            layer = idx // n_heads
+            head = idx % n_heads
+            score = scores[layer, head]
+            print(f"L{layer}.H{head}: {score:.4f}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Find causal components via ablation')
@@ -51,11 +73,13 @@ if __name__ == "__main__":
                         help='Model name/path (default: from config)')
     parser.add_argument('--token', type=str, default=None, help='HuggingFace token')
     parser.add_argument('--base_dir', type=str, default=None, help='Base directory for data')
+    parser.add_argument('--force', action='store_true',
+                        help='Force re-running causal tracing even if scores exist')
 
     args = parser.parse_args()
 
     try:
-        main(model_name=args.model, token=args.token)
+        main(model_name=args.model, token=args.token, force=args.force)
     except Exception as e:
         import traceback
         traceback.print_exc()

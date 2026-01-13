@@ -14,7 +14,7 @@ from src.data_loader import get_truthful_qa_data, create_truthfulqa_splits, form
 from src.probe_training import extract_activations_for_probing, train_probes, save_probes
 from src.evaluation import get_probe_predictions
 
-def main(pooling='last', model_name=None, token=None):
+def main(pooling='last', model_name=None, token=None, force=False):
     print(f">>> Running with pooling method: {pooling}")
     print(">>> 1. Loading Data...")
     df = get_truthful_qa_data()
@@ -52,37 +52,71 @@ def main(pooling='last', model_name=None, token=None):
     # Suffix for files based on pooling method
     suffix = f"_{pooling}" if pooling != 'last' else ""
 
-    for name, data in splits.items():
-        if not data:
-            continue
-        print(f">>> Extracting activations for {name} with {pooling} pooling...")
-        X, y = extract_activations_for_probing(model, data, batch_size=8, pooling=pooling)
+    # Check if activations already exist
+    all_activations_exist = all(
+        (ACTIVATIONS_DIR / f"X_{name}{suffix}.npy").exists() and
+        (ACTIVATIONS_DIR / f"y_{name}{suffix}.npy").exists()
+        for name in splits.keys() if splits[name]
+    )
 
-        # Save with pooling suffix
-        np.save(ACTIVATIONS_DIR / f"X_{name}{suffix}.npy", X)
-        np.save(ACTIVATIONS_DIR / f"y_{name}{suffix}.npy", y)
-        print(f"Saved {name} activations.")
+    if all_activations_exist and not force:
+        print(f">>> Activations already exist (pooling={pooling}), skipping extraction...")
+        print("    Use --force to re-extract")
+    else:
+        if force and all_activations_exist:
+            print(f">>> Force flag set, re-extracting activations...")
+        print(f">>> Extracting activations with {pooling} pooling...")
+        for name, data in splits.items():
+            if not data:
+                continue
+
+            # Check if this specific split exists
+            if (ACTIVATIONS_DIR / f"X_{name}{suffix}.npy").exists():
+                print(f"  Skipping {name} (already exists)")
+                continue
+
+            print(f"  Extracting {name}...")
+            X, y = extract_activations_for_probing(model, data, batch_size=8, pooling=pooling)
+
+            # Save with pooling suffix
+            np.save(ACTIVATIONS_DIR / f"X_{name}{suffix}.npy", X)
+            np.save(ACTIVATIONS_DIR / f"y_{name}{suffix}.npy", y)
+            print(f"  Saved {name} activations.")
 
     # Free memory?
     del model
 
     # Train Probes
     print(">>> 3. Training Probes on Train Set, Evaluating on Val Set...")
-    X_train = np.load(ACTIVATIONS_DIR / f"X_train{suffix}.npy")
-    y_train = np.load(ACTIVATIONS_DIR / f"y_train{suffix}.npy")
-    X_val = np.load(ACTIVATIONS_DIR / f"X_val{suffix}.npy")
-    y_val = np.load(ACTIVATIONS_DIR / f"y_val{suffix}.npy")
 
-    n_layers, n_heads = X_train.shape[1], X_train.shape[2]
+    # Check if probes already exist
+    probes_file = PROBES_DIR / f"probes_logistic{suffix}.pkl"
+    train_accs_file = RESULTS_DIR / f"train_accs{suffix}.pkl"
+    val_accs_file = RESULTS_DIR / f"val_accs{suffix}.pkl"
 
-    probes, train_accs, val_accs = train_probes(X_train, y_train, X_val, y_val, n_layers, n_heads)
-    save_probes(probes, f"probes_logistic{suffix}.pkl")
+    if probes_file.exists() and train_accs_file.exists() and val_accs_file.exists() and not force:
+        print(f"Probes already trained (pooling={pooling}), skipping training...")
+        print(f"Loaded from: {probes_file}")
+        print("Use --force to re-train")
+    else:
+        if force and probes_file.exists():
+            print(f"Force flag set, re-training probes...")
+        print("Training probes...")
+        X_train = np.load(ACTIVATIONS_DIR / f"X_train{suffix}.npy")
+        y_train = np.load(ACTIVATIONS_DIR / f"y_train{suffix}.npy")
+        X_val = np.load(ACTIVATIONS_DIR / f"X_val{suffix}.npy")
+        y_val = np.load(ACTIVATIONS_DIR / f"y_val{suffix}.npy")
 
-    # Save training and validation metrics
-    with open(RESULTS_DIR / f"train_accs{suffix}.pkl", 'wb') as f:
-        pickle.dump(train_accs, f)
-    with open(RESULTS_DIR / f"val_accs{suffix}.pkl", 'wb') as f:
-        pickle.dump(val_accs, f)
+        n_layers, n_heads = X_train.shape[1], X_train.shape[2]
+
+        probes, train_accs, val_accs = train_probes(X_train, y_train, X_val, y_val, n_layers, n_heads)
+        save_probes(probes, f"probes_logistic{suffix}.pkl")
+
+        # Save training and validation metrics
+        with open(train_accs_file, 'wb') as f:
+            pickle.dump(train_accs, f)
+        with open(val_accs_file, 'wb') as f:
+            pickle.dump(val_accs, f)
 
     print(f"Done with Stage 1 ({pooling} pooling).")
 
@@ -94,11 +128,13 @@ if __name__ == "__main__":
                         help='Model name/path (default: from config)')
     parser.add_argument('--token', type=str, default=None, help='HuggingFace token')
     parser.add_argument('--base_dir', type=str, default=None, help='Base directory for data')
+    parser.add_argument('--force', action='store_true',
+                        help='Force re-extraction and re-training even if files exist')
 
     args = parser.parse_args()
 
     try:
-        main(pooling=args.pooling, model_name=args.model, token=args.token)
+        main(pooling=args.pooling, model_name=args.model, token=args.token, force=args.force)
     except Exception as e:
         import traceback
         traceback.print_exc()
